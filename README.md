@@ -16,10 +16,11 @@ https://ozguraric-wq.github.io/vefa360/
 
 `docs/`, derlenmiş ve doğrudan yayımlanabilir sürümdür. GitHub üzerinde derleme veya sunucu gerektirmez.
 
-1. Dosyaları `ozguraric-wq/vefa360` deposunun `main` dalına yükleyin.
-2. Depoda **Settings → Pages → Build and deployment → Source: Deploy from a branch** seçin.
-3. Dal **main**, klasör **/docs**, ardından **Save** seçin.
-4. GitHub Pages dağıtımı tamamlandığında yukarıdaki adresi açın.
+1. Kaynak dosyaları ve eksiksiz `docs/` çıktısını `ozguraric-wq/vefa360` deposunun `main` dalına yükleyin. README veya yayın akışının tek başına bulunması sitenin yayımlandığı anlamına gelmez.
+2. Depoda **Settings → Pages → Build and deployment → Source: GitHub Actions** seçin.
+3. `docs/` değişiklikleri **VEFA360 Pages** akışını otomatik başlatır. İhtiyaç halinde **Actions → VEFA360 Pages → Run workflow** ile çalıştırın.
+4. Akış giriş sayfasını, bağlı JavaScript/CSS dosyalarını, video ve görselleri, 12 QR dosyasını kontrol eder; eksik dosya varsa açık hata vererek yayını durdurur.
+5. **Deploy to GitHub Pages** ve **Verify live page** adımları başarıyla bitince yukarıdaki adresi açın.
 
 `docs/.nojekyll` dosyasını koruyun. Hash tabanlı gezinme sayesinde demo ve sertifika bağlantıları sayfa yenilemede de çalışır.
 

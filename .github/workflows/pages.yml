@@ -1,0 +1,115 @@
+name: VEFA360 Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate complete site
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          from urllib.parse import urlsplit, unquote
+          import json
+          import sys
+
+          root = Path("docs")
+          required = [
+              "index.html", "favicon.svg",
+              "media/hero.mp4", "media/hero-poster.webp",
+              "media/ceramic.webp", "media/ceramic-display.webp",
+              "media/textile.webp", "media/wood.webp",
+              "qr/destinations.json",
+          ]
+          errors = [
+              f"Eksik veya bos dosya: docs/{name}"
+              for name in required
+              if not (root / name).is_file() or (root / name).stat().st_size == 0
+          ]
+          if not (root / ".nojekyll").is_file():
+              errors.append("Eksik dosya: docs/.nojekyll")
+          if len(list((root / "qr").glob("*.svg"))) != 12:
+              errors.append("12 demo QR dosyasi bulunmali.")
+          if not errors:
+              json.loads((root / "qr/destinations.json").read_text())
+
+              class Assets(HTMLParser):
+                  def handle_starttag(self, tag, attrs):
+                      values = dict(attrs)
+                      value = values.get("src") if tag == "script" else values.get("href") if tag == "link" and values.get("rel") in ("stylesheet", "icon", "modulepreload") else None
+                      if not value:
+                          return
+                      parsed = urlsplit(value)
+                      if parsed.scheme or parsed.netloc:
+                          errors.append(f"Yerel olmasi gereken dosya: {value}")
+                          return
+                      path = unquote(parsed.path)
+                      if path.startswith("/"):
+                          if not path.startswith("/vefa360/"):
+                              errors.append(f"Hatali yayin taban yolu: {value}")
+                              return
+                          path = path[len("/vefa360/"):]
+                      target = (root / path).resolve()
+                      if not target.is_relative_to(root.resolve()) or not target.is_file():
+                          errors.append(f"Bagli dosya bulunamadi: {value}")
+
+              Assets().feed((root / "index.html").read_text())
+          if errors:
+              for error in errors:
+                  print(f"::error::{error}")
+              sys.exit(1)
+          print("VEFA360 yayin dosyalari ve yerel baglantilar dogrulandi.")
+          PY
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Verify live page
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 10 --max-time 30 \
+            "$PAGE_URL" -o /tmp/vefa360-live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path("/tmp/vefa360-live.html").read_text()
+          assert "VEFA360" in html, "Canli sayfada VEFA360 bulunamadi."
+          assert 'type="module"' in html, "Canli uygulama girisi bulunamadi."
+          print("VEFA360 canli sayfasi dogrulandi.")
+          PY
